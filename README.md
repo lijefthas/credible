@@ -30,12 +30,6 @@ lib/
 assets/config/banned_countries.json   Banned countries (editable)
 ```
 
-## Configuration
-
-The banned country list can be changed in the app: tap the gear icon on the form screen to open Banned countries. Once a list is saved there, it is used instead of the default.
-
-The default list is `assets/config/banned_countries.json`. Add country names exactly as they appear in `lib/modules/data/country_catalog.dart`. Matching ignores case and extra spaces. Rebuild the app after editing the file.
-
 ## Styling
 
 - Fonts and text styles: `lib/modules/theme/app_typography.dart`
@@ -55,9 +49,3 @@ The default list is `assets/config/banned_countries.json`. Add country names exa
 - The CVV is checked but never stored.
 - Stored cards keep only the masked number (last four digits), type, and country.
 - Duplicates are detected with a SHA-256 fingerprint of the full number.
-
-## Tests
-
-```
-flutter test
-```
