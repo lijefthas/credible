@@ -8,11 +8,14 @@ import 'package:flutter/services.dart' show rootBundle;
 
 /// Countries whose issued cards are rejected. Loaded from an editable JSON asset.
 class BannedCountryList {
-  BannedCountryList(Iterable<String> countries)
-      : _normalized = countries.map(_normalize).toSet();
+  BannedCountryList(List<String> countries)
+      : countries = List.unmodifiable(countries),
+        _normalized = countries.map(_normalize).toSet();
 
   static const String assetPath = 'assets/config/banned_countries.json';
 
+  /// Country names exactly as they were given.
+  final List<String> countries;
   final Set<String> _normalized;
 
   static Future<BannedCountryList> loadFromAsset() async {

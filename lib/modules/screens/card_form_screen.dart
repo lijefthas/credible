@@ -14,7 +14,10 @@ import '../session/card_session.dart';
 import '../theme/app_typography.dart';
 import '../validation/card_number_rules.dart';
 import '../validation/card_type_detector.dart';
+import '../validation/card_validator.dart';
+import 'banned_countries_screen.dart';
 import 'captured_cards_screen.dart';
+import 'country_picker_screen.dart';
 
 /// Form for entering or scanning a card, validating it, and saving it.
 class CardFormScreen extends StatefulWidget {
@@ -29,6 +32,7 @@ class CardFormScreen extends StatefulWidget {
 class _CardFormScreenState extends State<CardFormScreen> {
   final _numberController = TextEditingController();
   final _cvvController = TextEditingController();
+  final _countryController = TextEditingController();
   CardType? _cardType;
   String? _country;
   String? _errorMessage;
@@ -37,6 +41,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
   void dispose() {
     _numberController.dispose();
     _cvvController.dispose();
+    _countryController.dispose();
     super.dispose();
   }
 
@@ -46,6 +51,11 @@ class _CardFormScreenState extends State<CardFormScreen> {
       appBar: AppBar(
         title: const Text('Capture card'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Banned countries',
+            onPressed: _openBannedCountries,
+          ),
           IconButton(
             icon: const Icon(Icons.list_alt),
             tooltip: 'Captured cards',
@@ -64,7 +74,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
             const SizedBox(height: 16),
             _cvvField(),
             const SizedBox(height: 16),
-            _countryDropdown(),
+            _countryField(),
             const SizedBox(height: 16),
             _errorLabel(),
             _actionButtons(),
@@ -125,24 +135,34 @@ class _CardFormScreenState extends State<CardFormScreen> {
     );
   }
 
-  Widget _countryDropdown() {
-    return DropdownButtonFormField<String>(
-      // ignore: deprecated_member_use - initialValue cannot follow state changes after reset
-      value: _country,
-      isExpanded: true,
+  Widget _countryField() {
+    return TextField(
+      controller: _countryController,
+      readOnly: true,
+      showCursor: false,
+      onTap: _pickCountry,
+      style: AppTypography.body,
       decoration: const InputDecoration(
         labelText: 'Issuing country',
         hintText: 'Select a country',
+        suffixIcon: Icon(Icons.arrow_drop_down),
       ),
-      items: [
-        for (final country in countryCatalog)
-          DropdownMenuItem(
-            value: country,
-            child: Text(country, style: AppTypography.body),
-          ),
-      ],
-      onChanged: (country) => setState(() => _country = country),
     );
+  }
+
+  Future<void> _pickCountry() async {
+    final picked = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => CountryPickerScreen(
+          title: 'Issuing country',
+          countries: countryCatalog,
+          bannedCountries: widget.services.session.bannedCountryList,
+        ),
+      ),
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _country = picked);
+    _countryController.text = picked;
   }
 
   Widget _errorLabel() {
@@ -199,7 +219,8 @@ class _CardFormScreenState extends State<CardFormScreen> {
 
   Future<void> _submitCard() async {
     final draft = _currentDraft();
-    final error = widget.services.validator.validationError(draft);
+    final validator = CardValidator(widget.services.session.bannedCountryList);
+    final error = validator.validationError(draft);
     if (error != null) {
       setState(() => _errorMessage = error);
       return;
@@ -232,6 +253,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
     setState(() {
       _numberController.clear();
       _cvvController.clear();
+      _countryController.clear();
       _cardType = null;
       _country = null;
       _errorMessage = null;
@@ -241,6 +263,14 @@ class _CardFormScreenState extends State<CardFormScreen> {
   void _showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text, style: AppTypography.body)),
+    );
+  }
+
+  void _openBannedCountries() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BannedCountriesScreen(session: widget.services.session),
+      ),
     );
   }
 

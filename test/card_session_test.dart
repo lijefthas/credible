@@ -23,12 +23,29 @@ Future<CardSession> _sessionWith(SharedPreferences preferences) async {
     cardStorage: CardStorage(preferences),
     settingsStorage: SettingsStorage(preferences),
   );
-  await session.initialize();
+  await session.initialize(defaultBannedCountries: const ['Iran']);
   return session;
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('uses the default banned countries until a list is saved', () async {
+    final session = await _sessionWith(await SharedPreferences.getInstance());
+    expect(session.bannedCountries, ['Iran']);
+  });
+
+  test('saves the banned list and restores it at startup', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final session = await _sessionWith(preferences);
+
+    await session.setBannedCountries(['Chile', 'Australia']);
+    expect(session.bannedCountries, ['Australia', 'Chile']);
+
+    final restored = await _sessionWith(preferences);
+    expect(restored.bannedCountries, ['Australia', 'Chile']);
+    expect(restored.bannedCountryList.contains('chile'), isTrue);
+  });
 
   test('captures a card once and reports the repeat as a duplicate', () async {
     final session = await _sessionWith(await SharedPreferences.getInstance());

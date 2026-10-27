@@ -9,6 +9,7 @@ class SettingsStorage {
   SettingsStorage(this._preferences);
 
   static const String _viewPreviousKey = 'view_previous';
+  static const String _bannedCountriesKey = 'banned_countries';
 
   final SharedPreferences _preferences;
 
@@ -16,5 +17,12 @@ class SettingsStorage {
 
   Future<void> setViewPreviousEnabled(bool enabled) {
     return _preferences.setBool(_viewPreviousKey, enabled);
+  }
+
+  /// Null until a banned list has been saved, so the bundled defaults apply.
+  List<String>? get bannedCountries => _preferences.getStringList(_bannedCountriesKey);
+
+  Future<void> setBannedCountries(List<String> countries) {
+    return _preferences.setStringList(_bannedCountriesKey, countries);
   }
 }
