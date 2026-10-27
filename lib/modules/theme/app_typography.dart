@@ -16,6 +16,7 @@ class AppTypography {
     fontSize: 22,
     fontWeight: FontWeight.w600,
     height: 1.3,
+    color: Color(0xFF1A1A1A),
   );
 
   static const TextStyle body = TextStyle(

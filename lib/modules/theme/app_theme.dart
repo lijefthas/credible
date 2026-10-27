@@ -22,7 +22,10 @@ class AppTheme {
         bodySmall: AppTypography.hint,
         labelLarge: AppTypography.button,
       ),
-      appBarTheme: const AppBarTheme(titleTextStyle: AppTypography.title),
+      appBarTheme: const AppBarTheme(
+        foregroundColor: Color(0xFF1A1A1A),
+        titleTextStyle: AppTypography.title,
+      ),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
         labelStyle: AppTypography.body,
