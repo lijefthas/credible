@@ -54,6 +54,15 @@ void main() {
     test('returns null when no valid number is present', () {
       expect(CardNumberExtractor.numberFrom('no digits 123 here'), isNull);
     });
+
+    test('finds the number when other digits share its line', () {
+      expect(CardNumberExtractor.numberFrom('VALID 12 4111 1111 1111 1111'), '4111111111111111');
+      expect(CardNumberExtractor.numberFrom('4111 1111 1111 1111 123'), '4111111111111111');
+    });
+
+    test('finds the number when its groups are separated by wider gaps or line breaks', () {
+      expect(CardNumberExtractor.numberFrom('4111  1111\n1111 1111'), '4111111111111111');
+    });
   });
 
   group('CardValidator', () {
