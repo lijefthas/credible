@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 /// Country names offered in the issuing-country dropdown.
 const List<String> countryCatalog = [

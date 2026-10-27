@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 import 'package:credible/modules/models/captured_card.dart';
 import 'package:credible/modules/models/card_type.dart';

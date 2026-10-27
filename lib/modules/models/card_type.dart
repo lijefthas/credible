@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 /// Supported card networks, each with its display label and CVV length.
 enum CardType {

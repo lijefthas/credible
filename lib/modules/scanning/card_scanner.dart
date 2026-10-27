@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';

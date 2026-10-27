@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 import 'package:credible/modules/config/banned_country_list.dart';
 import 'package:credible/modules/models/card_draft.dart';
@@ -92,6 +91,22 @@ void main() {
 
     test('rejects a missing issuing country', () {
       expect(validator.validationError(draft(country: null)), isNotNull);
+    });
+
+    test('reports the field whose check failed', () {
+      expect(validator.failureFor(draft(cvv: '12'))?.field, CardField.cvv);
+      expect(validator.failureFor(draft(country: 'Iran'))?.field, CardField.country);
+    });
+
+    test('lists empty mandatory fields as missing', () {
+      final empty = CardDraft(number: '', cardType: CardType.unknown, cvv: '', issuingCountry: null);
+      expect(validator.missingFields(empty), {
+        CardField.number,
+        CardField.cardType,
+        CardField.cvv,
+        CardField.country,
+      });
+      expect(validator.missingFields(draft()), isEmpty);
     });
   });
 }

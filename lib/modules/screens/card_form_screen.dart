@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +10,7 @@ import '../models/captured_card.dart';
 import '../models/card_draft.dart';
 import '../models/card_type.dart';
 import '../session/card_session.dart';
+import '../theme/app_button_style.dart';
 import '../theme/app_typography.dart';
 import '../validation/card_number_rules.dart';
 import '../validation/card_type_detector.dart';
@@ -30,12 +30,15 @@ class CardFormScreen extends StatefulWidget {
 }
 
 class _CardFormScreenState extends State<CardFormScreen> {
+  static const Color _successGreen = Color(0xFF2E7D32);
+
   final _numberController = TextEditingController();
   final _cvvController = TextEditingController();
   final _countryController = TextEditingController();
   CardType? _cardType;
   String? _country;
-  String? _errorMessage;
+  CardCheckFailure? _failure;
+  Set<CardField> _missing = {};
 
   @override
   void dispose() {
@@ -81,6 +84,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: _bottomBar(),
     );
   }
 
@@ -90,10 +94,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 \-]'))],
       style: AppTypography.body,
-      decoration: const InputDecoration(
-        labelText: 'Card number',
-        hintText: '4111 1111 1111 1111',
-      ),
+      decoration: _decoration(CardField.number, label: 'Card number', hint: '4111 1111 1111 1111'),
       onChanged: _onNumberChanged,
     );
   }
@@ -103,10 +104,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
       // ignore: deprecated_member_use - initialValue cannot follow detected type changes
       value: _cardType,
       isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Card type',
-        hintText: 'Detected from the number',
-      ),
+      decoration: _decoration(CardField.cardType, label: 'Card type', hint: 'Detected from the number'),
       items: [
         for (final type in CardType.selectable)
           DropdownMenuItem(
@@ -114,7 +112,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
             child: Text(type.label, style: AppTypography.body),
           ),
       ],
-      onChanged: (type) => setState(() => _cardType = type),
+      onChanged: _onTypeChanged,
     );
   }
 
@@ -128,10 +126,8 @@ class _CardFormScreenState extends State<CardFormScreen> {
         LengthLimitingTextInputFormatter(4),
       ],
       style: AppTypography.body,
-      decoration: const InputDecoration(
-        labelText: 'CVV',
-        hintText: '3 or 4 digits on the card',
-      ),
+      decoration: _decoration(CardField.cvv, label: 'CVV', hint: '3 or 4 digits on the card'),
+      onChanged: (_) => _clearMark(CardField.cvv),
     );
   }
 
@@ -142,13 +138,52 @@ class _CardFormScreenState extends State<CardFormScreen> {
       showCursor: false,
       onTap: _pickCountry,
       style: AppTypography.body,
-      decoration: const InputDecoration(
-        labelText: 'Issuing country',
-        hintText: 'Select a country',
-        suffixIcon: Icon(Icons.arrow_drop_down),
+      decoration: _decoration(
+        CardField.country,
+        label: 'Issuing country',
+        hint: 'Select a country',
+        suffixIcon: const Icon(Icons.arrow_drop_down),
       ),
     );
   }
+
+  /// Builds a field's decoration: a red outline when its check failed, and a red "!" beside the label when it is empty.
+  InputDecoration _decoration(
+    CardField field, {
+    required String label,
+    String? hint,
+    Widget? suffixIcon,
+  }) {
+    final border = _isFailing(field)
+        ? OutlineInputBorder(borderSide: BorderSide(color: _errorRed, width: 2))
+        : null;
+    return InputDecoration(
+      label: _fieldLabel(field, label),
+      hintText: hint,
+      suffixIcon: suffixIcon,
+      border: border,
+      enabledBorder: border,
+      focusedBorder: border,
+    );
+  }
+
+  Widget _fieldLabel(CardField field, String text) {
+    if (!_missing.contains(field)) {
+      return Text(text);
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(text),
+        const SizedBox(width: 4),
+        Icon(Icons.priority_high, size: 16, color: _errorRed),
+      ],
+    );
+  }
+
+  Color get _errorRed => Theme.of(context).colorScheme.error;
+
+  bool _isFailing(CardField field) => _failure?.field == field;
 
   Future<void> _pickCountry() async {
     final picked = await Navigator.of(context).push<String>(
@@ -163,15 +198,17 @@ class _CardFormScreenState extends State<CardFormScreen> {
     if (!mounted || picked == null) return;
     setState(() => _country = picked);
     _countryController.text = picked;
+    _clearMark(CardField.country);
   }
 
   Widget _errorLabel() {
-    if (_errorMessage == null) {
+    final failure = _failure;
+    if (failure == null) {
       return const SizedBox.shrink();
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Text(_errorMessage!, style: AppTypography.error),
+      child: Text(failure.message, style: AppTypography.error),
     );
   }
 
@@ -179,25 +216,57 @@ class _CardFormScreenState extends State<CardFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton.icon(
+        ElevatedButton.icon(
           onPressed: _scanCard,
+          style: AppButtonStyle.secondary,
           icon: const Icon(Icons.camera_alt_outlined),
           label: const Text('Scan card'),
         ),
         const SizedBox(height: 12),
         ElevatedButton(
           onPressed: _submitCard,
+          style: AppButtonStyle.primary,
           child: const Text('Validate and save'),
         ),
       ],
     );
   }
 
+  Widget _bottomBar() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ElevatedButton.icon(
+          onPressed: _resetForm,
+          style: AppButtonStyle.secondary,
+          icon: const Icon(Icons.clear),
+          label: const Text('Clear form'),
+        ),
+      ),
+    );
+  }
+
   void _onNumberChanged(String value) {
+    _clearMark(CardField.number);
     final detected = CardTypeDetector.typeOf(CardNumberRules.digitsOnly(value));
     if (detected != CardType.unknown) {
       setState(() => _cardType = detected);
+      _clearMark(CardField.cardType);
     }
+  }
+
+  void _onTypeChanged(CardType? type) {
+    setState(() => _cardType = type);
+    _clearMark(CardField.cardType);
+  }
+
+  /// Removes a field's red outline and "!" once the user edits it.
+  void _clearMark(CardField field) {
+    if (!_missing.contains(field) && !_isFailing(field)) return;
+    setState(() {
+      _missing = {..._missing}..remove(field);
+      if (_isFailing(field)) _failure = null;
+    });
   }
 
   Future<void> _scanCard() async {
@@ -205,12 +274,12 @@ class _CardFormScreenState extends State<CardFormScreen> {
     try {
       number = await widget.services.scanner.scanCardNumber();
     } on Exception catch (error) {
-      _showMessage('Scan failed: $error');
+      _showSnackBar('Scan failed: $error', success: false);
       return;
     }
     if (!mounted) return;
     if (number == null) {
-      _showMessage('No valid card number was found in the photo.');
+      _showSnackBar('No valid card number was found in the photo.', success: false);
       return;
     }
     _numberController.text = number;
@@ -220,9 +289,9 @@ class _CardFormScreenState extends State<CardFormScreen> {
   Future<void> _submitCard() async {
     final draft = _currentDraft();
     final validator = CardValidator(widget.services.session.bannedCountryList);
-    final error = validator.validationError(draft);
-    if (error != null) {
-      setState(() => _errorMessage = error);
+    final failure = validator.failureFor(draft);
+    if (failure != null) {
+      _showFailure(failure, validator.missingFields(draft));
       return;
     }
     final card = CapturedCard.fromDigits(
@@ -233,11 +302,19 @@ class _CardFormScreenState extends State<CardFormScreen> {
     final outcome = await widget.services.session.capture(card);
     if (!mounted) return;
     if (outcome == CaptureOutcome.duplicate) {
-      setState(() => _errorMessage = 'This card has already been captured.');
+      _showFailure(const CardCheckFailure(CardField.number, 'This card has already been captured.'), {});
       return;
     }
     _resetForm();
-    _showMessage('Card saved.');
+    _showSnackBar('Card saved.', success: true);
+  }
+
+  void _showFailure(CardCheckFailure failure, Set<CardField> missing) {
+    setState(() {
+      _failure = failure;
+      _missing = missing;
+    });
+    _showSnackBar(failure.message, success: false);
   }
 
   CardDraft _currentDraft() {
@@ -256,13 +333,17 @@ class _CardFormScreenState extends State<CardFormScreen> {
       _countryController.clear();
       _cardType = null;
       _country = null;
-      _errorMessage = null;
+      _failure = null;
+      _missing = {};
     });
   }
 
-  void _showMessage(String text) {
+  void _showSnackBar(String text, {required bool success}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text, style: AppTypography.body)),
+      SnackBar(
+        backgroundColor: success ? _successGreen : _errorRed,
+        content: Text(text, style: AppTypography.body.copyWith(color: Colors.white)),
+      ),
     );
   }
 

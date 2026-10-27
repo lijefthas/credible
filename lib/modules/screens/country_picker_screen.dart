@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 import 'package:flutter/material.dart';
 
@@ -63,15 +62,17 @@ class _CountryPickerScreenState extends State<CountryPickerScreen> {
       children: [
         for (final country in sections.open) _countryTile(country),
         if (sections.needsDivider) const Divider(color: Colors.red, thickness: 2),
-        for (final country in sections.banned) _countryTile(country),
+        for (final country in sections.banned) _countryTile(country, selectable: false),
       ],
     );
   }
 
-  Widget _countryTile(String country) {
+  /// Banned countries are shown greyed out and cannot be picked.
+  Widget _countryTile(String country, {bool selectable = true}) {
     return ListTile(
       title: Text(country, style: AppTypography.body),
-      onTap: () => Navigator.of(context).pop(country),
+      enabled: selectable,
+      onTap: selectable ? () => Navigator.of(context).pop(country) : null,
     );
   }
 }

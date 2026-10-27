@@ -1,6 +1,5 @@
 // AUTHOR: L. I. Jefthas
 // DATE: October 2026
-// VERSION: 0.0.1
 
 import 'package:credible/modules/config/banned_country_list.dart';
 import 'package:credible/modules/data/country_filter.dart';
